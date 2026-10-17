@@ -12,8 +12,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Get Server IP
+        working-directory: terraform
+        run: |
+          terraform init -reconfigure
+          echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
 
       - name: Create SSH Key
         run: |
@@ -21,29 +37,26 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/hello-cicd
           chmod 600 ~/.ssh/hello-cicd
 
-      - name: Add Server To Known Hosts
+      - name: Add Host Key
         run: |
-          ssh-keyscan -H 51.24.125.239 >> ~/.ssh/known_hosts
+          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
 
-      - name: Create App Directory
+      - name: Create Application Directory
         run: |
-          ssh -i ~/.ssh/hello-cicd ec2-user@51.24.125.239 \
+          ssh -i ~/.ssh/hello-cicd ec2-user@$SERVER_IP \
           "mkdir -p /home/ec2-user/app"
 
       - name: Copy Application
         run: |
           scp -i ~/.ssh/hello-cicd \
           -r app/* \
-          ec2-user@51.24.125.239:/home/ec2-user/app/
+          ec2-user@$SERVER_IP:/home/ec2-user/app/
 
-      - name: Restart Application
+      - name: Install Dependencies And Restart
         run: |
-          ssh -i ~/.ssh/hello-cicd ec2-user@51.24.125.239 << 'EOF'
-          cd /home/ec2-user/app
-
-          npm install
-
-          pm2 restart hello-cicd || pm2 start server.js --name hello-cicd
-
-          pm2 save
-          EOF
+          ssh -i ~/.ssh/hello-cicd ec2-user@$SERVER_IP "
+            cd /home/ec2-user/app &&
+            npm install &&
+            pm2 restart hello-cicd || pm2 start server.js --name hello-cicd &&
+            pm2 save
+          "

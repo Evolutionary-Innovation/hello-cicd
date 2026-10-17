@@ -17,10 +17,6 @@ resource "aws_instance" "web" {
     npm install -g pm2
   EOF
 
-  tags = {
-    managed-by = "terraform"
-    name = "hello-cicd"
-  }
 }
 
 data "aws_ami" "amazon_linux" {
@@ -57,6 +53,19 @@ resource "aws_security_group" "web" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_eip" "web" {
+  domain = "vpc"
+
+  tags = {
+    Name = "hello-cicd-eip"
+  }
+}
+
+resource "aws_eip_association" "web" {
+  instance_id   = aws_instance.web.id
+  allocation_id = aws_eip.web.id
 }
 
 resource "aws_key_pair" "deployer" {

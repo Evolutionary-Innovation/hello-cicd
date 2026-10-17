@@ -5,7 +5,7 @@ output "instance_id" {
 
 output "public_ip" {
   description = "Public IP address"
-  value       = aws_instance.web.public_ip
+  value       = aws_eip.web.public_ip
 }
 
 output "public_dns" {
@@ -15,5 +15,5 @@ output "public_dns" {
 
 output "app_url" {
   description = "Application URL"
-  value       = "http://${aws_instance.web.public_ip}:3000"
+  value       = "http://${aws_eip.web.public_ip}:3000"
 }
