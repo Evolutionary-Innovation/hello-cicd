@@ -2,6 +2,11 @@ resource "aws_instance" "web" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = var.instance_type
 
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
   vpc_security_group_ids = [
     aws_security_group.web.id
   ]
@@ -17,6 +22,13 @@ resource "aws_instance" "web" {
     set -e
 
     dnf update -y
+
+    dnf install -y docker
+
+    systemctl enable docker
+    systemctl start docker
+
+    usermod -aG docker ec2-user
 
     dnf install -y git nodejs
 
