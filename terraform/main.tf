@@ -1,6 +1,6 @@
 resource "aws_instance" "web" {
   ami           = data.aws_ami.amazon_linux.id
-  instance_type = "t3.micro"
+  instance_type = var.instance_type
 
   vpc_security_group_ids = [
     aws_security_group.web.id
@@ -11,12 +11,24 @@ resource "aws_instance" "web" {
   user_data = <<-EOF
     #!/bin/bash
 
+    exec > >(tee /var/log/user-data.log)
+    exec 2>&1
+
+    set -e
+
     dnf update -y
-    dnf install -y nodejs git
+
+    dnf install -y git nodejs
 
     npm install -g pm2
-  EOF
 
+    mkdir -p /home/ec2-user/app
+
+    chown -R ec2-user:ec2-user /home/ec2-user/app
+
+    echo "Bootstrap complete" >/tmp/bootstrap-success.txt
+
+  EOF
 }
 
 data "aws_ami" "amazon_linux" {
