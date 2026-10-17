@@ -1,6 +1,8 @@
 name: Deploy Application
 
 on:
+  workflow_dispatch:
+
   push:
     branches:
       - main
@@ -20,7 +22,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -29,6 +31,7 @@ jobs:
         working-directory: terraform
         run: |
           terraform init -reconfigure
+          terraform state list
           echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
 
       - name: Create SSH Key
