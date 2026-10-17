@@ -8,6 +8,15 @@ resource "aws_instance" "web" {
 
   key_name = aws_key_pair.deployer.key_name
 
+  user_data = <<-EOF
+    #!/bin/bash
+
+    dnf update -y
+    dnf install -y nodejs git
+
+    npm install -g pm2
+  EOF
+  
   tags = {
     managed-by = "terraform"
     name = "hello-cicd"

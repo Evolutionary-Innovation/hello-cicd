@@ -1,0 +1,49 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/hello-cicd
+          chmod 600 ~/.ssh/hello-cicd
+
+      - name: Add Server To Known Hosts
+        run: |
+          ssh-keyscan -H 51.24.125.239 >> ~/.ssh/known_hosts
+
+      - name: Create App Directory
+        run: |
+          ssh -i ~/.ssh/hello-cicd ec2-user@51.24.125.239 \
+          "mkdir -p /home/ec2-user/app"
+
+      - name: Copy Application
+        run: |
+          scp -i ~/.ssh/hello-cicd \
+          -r app/* \
+          ec2-user@51.24.125.239:/home/ec2-user/app/
+
+      - name: Restart Application
+        run: |
+          ssh -i ~/.ssh/hello-cicd ec2-user@51.24.125.239 << 'EOF'
+          cd /home/ec2-user/app
+
+          npm install
+
+          pm2 restart hello-cicd || pm2 start server.js --name hello-cicd
+
+          pm2 save
+          EOF
