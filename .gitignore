@@ -1,0 +1,16 @@
+# Node
+node_modules/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Private keys
+keys/
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
