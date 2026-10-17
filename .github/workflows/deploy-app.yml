@@ -59,11 +59,19 @@ jobs:
           -r app/* \
           ec2-user@$SERVER_IP:/home/ec2-user/app/
 
-      - name: Install Dependencies And Restart
+      - name: Build And Deploy Container
         run: |
           ssh -i ~/.ssh/hello-cicd ec2-user@$SERVER_IP "
             cd /home/ec2-user/app &&
-            npm install &&
-            pm2 restart hello-cicd || pm2 start server.js --name hello-cicd &&
-            pm2 save
+
+            docker stop hello-cicd || true &&
+            docker rm hello-cicd || true &&
+
+            docker build -t hello-cicd . &&
+
+            docker run -d \
+              --name hello-cicd \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              hello-cicd
           "
