@@ -8,7 +8,7 @@ node_modules/
 terraform.tfvars
 
 # Private keys
-keys/
+keys/private/*
 *.pem
 
 # OS

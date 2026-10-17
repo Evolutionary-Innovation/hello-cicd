@@ -52,5 +52,5 @@ resource "aws_security_group" "web" {
 
 resource "aws_key_pair" "deployer" {
   key_name   = "hello-cicd"
-  public_key = file("${path.module}/../keys/hello-cicd.pub")
+  public_key = file("${path.module}/../keys/public/hello-cicd.pub")
 }
