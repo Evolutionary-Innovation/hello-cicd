@@ -16,7 +16,7 @@ resource "aws_instance" "web" {
 
     npm install -g pm2
   EOF
-  
+
   tags = {
     managed-by = "terraform"
     name = "hello-cicd"
@@ -62,4 +62,8 @@ resource "aws_security_group" "web" {
 resource "aws_key_pair" "deployer" {
   key_name   = "hello-cicd"
   public_key = file("${path.module}/../keys/public/hello-cicd.pub")
+
+  lifecycle {
+    ignore_changes = [public_key]
+  }
 }
