@@ -34,56 +34,23 @@ jobs:
 
       - uses: ./.github/actions/terraform-outputs
 
-      - name: Create SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
-      - name: Add Host Key
-        run: |
-          ssh-keyscan -H "$PUBLIC_IP" >> ~/.ssh/known_hosts
-
-      # TEMPORARY: minimal AL2023 AMI ships without the SSM agent. Remove once SSM is the deploy path.
-      - name: Ensure SSM Agent
-        run: |
-          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" '
-            set -e
-            rpm -q amazon-ssm-agent >/dev/null 2>&1 || sudo dnf install -y amazon-ssm-agent
-            sudo systemctl enable --now amazon-ssm-agent
-            systemctl is-active amazon-ssm-agent
-          '
-
       - name: Record Previous Image
         id: prev
         run: |
-          PREV="$(ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" \
-            "docker inspect --format '{{.Config.Image}}' $CONTAINER_NAME 2>/dev/null || true")"
+          PREV="$(bash .github/scripts/ssm-run.sh "$INSTANCE_ID" "$CONTAINER_NAME" \
+            < .github/scripts/remote/current-image.sh)"
           echo "Previous image: ${PREV:-none}"
           echo "image=$PREV" >> "$GITHUB_OUTPUT"
 
       - name: Deploy Container
         id: deploy
         run: |
-          REGISTRY="${ECR_REPOSITORY_URL%%/*}"
           IMAGE="$ECR_REPOSITORY_URL:${{ inputs.image_tag || github.sha }}"
           echo "Deploying $IMAGE"
 
-          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" "
-            aws ecr get-login-password --region $AWS_REGION | \
-            docker login --username AWS --password-stdin $REGISTRY &&
-
-            docker pull $IMAGE &&
-
-            docker stop $CONTAINER_NAME || true &&
-            docker rm $CONTAINER_NAME || true &&
-
-            docker run -d \
-              --name $CONTAINER_NAME \
-              --restart unless-stopped \
-              -p $APP_PORT:3000 \
-              $IMAGE
-          "
+          bash .github/scripts/ssm-run.sh "$INSTANCE_ID" \
+            "$IMAGE" "$CONTAINER_NAME" "$APP_PORT" "$AWS_REGION" \
+            < .github/scripts/remote/deploy.sh
 
       - name: Health Check
         id: health
@@ -102,7 +69,7 @@ jobs:
           done
 
           echo "::error::$URL did not report ok:$TAG within 90s"
-          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" "docker logs --tail 50 $CONTAINER_NAME" || true
+          echo 'docker logs --tail 50 "$1"' | bash .github/scripts/ssm-run.sh "$INSTANCE_ID" "$CONTAINER_NAME" || true
           exit 1
 
       - name: Roll Back
@@ -110,25 +77,12 @@ jobs:
         env:
           PREV_IMAGE: ${{ steps.prev.outputs.image }}
         run: |
-          REGISTRY="${ECR_REPOSITORY_URL%%/*}"
           PREV_TAG="${PREV_IMAGE##*:}"
           echo "::warning::Deployment failed; rolling back to $PREV_IMAGE"
 
-          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" \
-            bash -s "$PREV_IMAGE" "$CONTAINER_NAME" "$APP_PORT" "$AWS_REGION" "$REGISTRY" <<'REMOTE'
-          set -euo pipefail
-          IMAGE="$1"; NAME="$2"; PORT="$3"; REGION="$4"; REGISTRY="$5"
-
-          if [ "$(docker inspect --format '{{.Config.Image}} {{.State.Running}}' "$NAME" 2>/dev/null || true)" = "$IMAGE true" ]; then
-            echo "$IMAGE is already running; nothing to roll back"
-            exit 0
-          fi
-
-          aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
-          docker pull "$IMAGE"
-          docker rm -f "$NAME" || true
-          docker run -d --name "$NAME" --restart unless-stopped -p "$PORT:3000" "$IMAGE"
-          REMOTE
+          bash .github/scripts/ssm-run.sh "$INSTANCE_ID" \
+            "$PREV_IMAGE" "$CONTAINER_NAME" "$APP_PORT" "$AWS_REGION" \
+            < .github/scripts/remote/rollback.sh
 
           URL="http://$PUBLIC_IP:$APP_PORT"
           for attempt in $(seq 1 12); do
