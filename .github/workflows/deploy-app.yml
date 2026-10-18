@@ -65,3 +65,22 @@ jobs:
               -p $APP_PORT:3000 \
               $IMAGE
           "
+
+      - name: Health Check
+        run: |
+          TAG="${{ inputs.image_tag || github.sha }}"
+          URL="http://$PUBLIC_IP:$APP_PORT/health"
+
+          for attempt in $(seq 1 18); do
+            BODY="$(curl -fsS --max-time 5 "$URL" 2>/dev/null || true)"
+            echo "attempt $attempt: ${BODY:-no response}"
+            if [ "$(echo "$BODY" | jq -r '.status + ":" + .sha' 2>/dev/null)" = "ok:$TAG" ]; then
+              echo "Healthy and running $TAG"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "::error::$URL did not report ok:$TAG within 90s"
+          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" "docker logs --tail 50 $CONTAINER_NAME" || true
+          exit 1

@@ -7,6 +7,10 @@ app.get("/", (req, res) => {
   res.send("Terraform CI/CD Pipeline - Version 5: Docker Image");
 });
 
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", sha: process.env.GIT_SHA || "unknown" });
+});
+
 app.listen(3000, () => {
   console.log("Listening on port 3000");
 });

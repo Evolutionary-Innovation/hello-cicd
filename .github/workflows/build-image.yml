@@ -39,5 +39,5 @@ jobs:
             exit 0
           fi
 
-          docker build -t "$ECR_REPOSITORY_URL:$GITHUB_SHA" ./src
+          docker build --build-arg GIT_SHA="$GITHUB_SHA" -t "$ECR_REPOSITORY_URL:$GITHUB_SHA" ./src
           docker push "$ECR_REPOSITORY_URL:$GITHUB_SHA"
