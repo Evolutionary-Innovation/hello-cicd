@@ -98,6 +98,10 @@ resource "aws_key_pair" "deployer" {
 }
 
 resource "aws_ecr_repository" "hello_cicd" {
-  name = "hello-cicd"
-}
+  name                 = "hello-cicd"
+  image_tag_mutability = "MUTABLE"
 
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
