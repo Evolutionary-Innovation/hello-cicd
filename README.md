@@ -2,7 +2,7 @@
 
 A reusable, template-ready platform that takes a containerised web application from `git push` to a running, health-checked deployment on AWS, with no long-lived credentials, no SSH and no AWS Console steps.
 
-It is the starting point for new projects (for example StableBuddy, RaceHorse, internal engineering tools or small SaaS applications): clone it, run one script to rename it, bootstrap the AWS account, replace `src/` with the real application.
+It is the starting point for new projects (for example React apps, internal engineering tools or small SaaS applications): clone it, run one script to rename it, bootstrap the AWS account, replace `src/` with the real application.
 
 ## What it does
 
@@ -87,7 +87,7 @@ All infrastructure is code; the only state that matters lives in the versioned S
 ## Creating a new project from the template
 
 ```bash
-scripts/configure-project.sh --name stablebuddy --owner my-org --repo stablebuddy \
+scripts/configure-project.sh --name my-app --owner my-org --repo my-repo \
     --state-bucket my-org-terraform-state --region eu-west-2
 ```
 
