@@ -20,6 +20,12 @@ resource "aws_instance" "web" {
 
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
+  # A newly published AL2023 AMI must not replace the instance on an unrelated push.
+  # Patch deliberately: terraform apply -replace=aws_instance.web
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   user_data = <<-EOF
     #!/bin/bash
 

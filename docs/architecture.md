@@ -1,49 +1,52 @@
 # Architecture
 
-## Repository layout
+## Components
 
-```
-repo
-├── src/          Application (Node/Express) and its Dockerfile
-├── terraform/    Main stack: EC2, security group, Elastic IP, key pair, ECR, EC2 IAM role/profile
-├── bootstrap/    Bootstrap stack: state bucket, GitHub OIDC provider, GitHub Actions role
-├── keys/public/  Public half of the EC2 SSH key pair
-├── .github/      Workflows and the terraform-outputs composite action
-└── docs/
-```
+| Component | Where | Purpose |
+|---|---|---|
+| State bucket | `bootstrap/` | Versioned, encrypted S3 bucket holding the state of both stacks (native locking, no DynamoDB) |
+| GitHub OIDC provider and CI role | `bootstrap/` | Lets workflows from one repository and one branch assume a scoped IAM role |
+| CI policy | `bootstrap/ci-policy.tf` | Least-privilege customer-managed policy attached to the CI role |
+| EC2 instance | `terraform/` | Runs Docker; Amazon Linux 2023, encrypted gp3 root volume, IMDSv2 required, no key pair |
+| Elastic IP | `terraform/` | Stable public address (changes only if the stack is rebuilt) |
+| Security group | `terraform/` | One ingress rule: the application port; no SSH |
+| ECR repository | `terraform/` | Immutable SHA tags, scan on push, lifecycle policy (untagged 1 day, keep 10 tagged) |
+| Instance role and profile | `terraform/` | `AmazonSSMManagedInstanceCore` (SSM) and `AmazonEC2ContainerRegistryReadOnly` (pull) |
+| Application | `src/` | Node/Express container exposing `/` and `/health` |
 
 ## Delivery pipeline
 
-`pipeline.yml` runs on every push to `main` (or manually) and chains the stages:
-
 ```
-Infrastructure (terraform apply) -> Build Image (push to ECR) -> Deploy (ssh, docker pull, docker run)
+push to main
+  -> Infrastructure  terraform fmt, init, validate, plan -out, apply tfplan
+  -> Build Image     docker build ./src, push <ecr>:<sha> (skips if the tag already exists)
+  -> Deploy          wait for SSM + cloud-init, record running image, deploy via SSM,
+                     health gate on {status:ok, sha:<sha>}, roll back on failure
 ```
 
-- Each stage is also runnable on its own via `workflow_dispatch`.
-- Stages are gated with `needs:`, so build never races infrastructure and deploy never races build.
-- The pipeline has a serialised concurrency group; overlapping pushes queue.
-- GitHub authenticates to AWS with OIDC (`AWS_ROLE_ARN`); no AWS keys are stored.
-- The only remaining secret is `EC2_SSH_KEY`, used by the deploy step.
+- Stages are reusable workflows (`workflow_call`) chained with `needs:` and also runnable alone (`workflow_dispatch`).
+- `pipeline.yml` uses a serialised concurrency group: overlapping pushes queue and are never cancelled mid-apply.
+- Docs-only pushes (`docs/**`, `**/*.md`) do not run the pipeline.
 
-## Configuration
+## Configuration flow
 
-Terraform is the single source of truth.
+`project_name` is the single naming source. It drives the IAM role/profile, security group, EIP tag, ECR repository, container name, `project` tag, CI-policy scope and the state key.
 
-- `terraform/terraform.tfvars` and `bootstrap/terraform.tfvars` hold non-secret values.
-  Only `*.secret.tfvars` files are git-ignored.
-- Build and deploy read Terraform outputs through `.github/actions/terraform-outputs`,
-  which exports each output as an upper-cased env var (`ecr_repository_url` -> `ECR_REPOSITORY_URL`).
-- GitHub Variables needed before Terraform can be read: `AWS_ROLE_ARN`, `AWS_REGION`.
-- Backend blocks cannot use variables; `backend.tf` in each stack must be kept in sync
-  with `state_bucket_name` and `aws_region` by hand.
+Build and deploy read the Terraform outputs through `.github/actions/terraform-outputs`, which exports each output as an upper-case variable (`ecr_repository_url` -> `ECR_REPOSITORY_URL`). Adding an output makes it available to every job with no workflow change.
 
-## Stacks
+GitHub holds only `AWS_REGION` and `AWS_ROLE_ARN` (variables). Backend settings live in `backend.hcl` per stack because backend blocks cannot use variables.
 
-| Stack | State key | Applied by |
-|---|---|---|
-| `bootstrap/` | `bootstrap/terraform.tfstate` | Manually, with admin credentials (CI never modifies its own access) |
-| `terraform/` | `hello-cicd/terraform.tfstate` | The Infrastructure workflow |
+## Trust boundaries
 
-Both use S3 native state locking (`use_lockfile`). See `bootstrap/README.md` for
-bringing up a fresh account.
+1. GitHub -> AWS: OIDC; subject pinned to owner ID, repo ID and branch.
+2. CI role -> AWS: only the project's EC2/IAM/ECR/SSM resources and the project's state prefix.
+3. CI -> instance: SSM Run Command only; the instance has no inbound path other than the app port.
+4. Internet -> instance: TCP on the app port only.
+
+## Design decisions
+
+- **Two stacks** so the pipeline that applies infrastructure cannot widen its own permissions.
+- **SSM instead of SSH** removes the key, the open port and the secret.
+- **Immutable SHA tags** make every deployment and rollback traceable to a commit.
+- **Plan-then-apply of the saved plan** guarantees CI applies exactly what was planned.
+- **`ignore_changes = [ami]`** on the instance prevents an unrelated push from replacing the server when AWS publishes a new AMI.

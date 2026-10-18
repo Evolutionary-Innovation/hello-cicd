@@ -8,8 +8,8 @@ node_modules/
 *.secret.tfvars
 tfplan
 
-# Keys (none are used by this platform)
-keys/private/
+# Keys (none are used by this platform; never commit one)
+keys/
 *.pem
 
 # OS
