@@ -49,7 +49,7 @@ data "aws_ami" "amazon_linux" {
 }
 
 resource "aws_security_group" "web" {
-  name = "hello-cicd-web"
+  name = "${var.project_name}-web"
 
   ingress {
     from_port   = 22
@@ -59,8 +59,8 @@ resource "aws_security_group" "web" {
   }
 
   ingress {
-    from_port   = 3000
-    to_port     = 3000
+    from_port   = var.app_port
+    to_port     = var.app_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -77,7 +77,7 @@ resource "aws_eip" "web" {
   domain = "vpc"
 
   tags = {
-    Name = "hello-cicd-eip"
+    Name = "${var.project_name}-eip"
   }
 }
 
@@ -87,8 +87,8 @@ resource "aws_eip_association" "web" {
 }
 
 resource "aws_key_pair" "deployer" {
-  key_name   = "hello-cicd"
-  public_key = file("${path.module}/../keys/public/hello-cicd.pub")
+  key_name   = var.project_name
+  public_key = file("${path.module}/../keys/public/${var.project_name}.pub")
 
   lifecycle {
     ignore_changes = [public_key]
@@ -96,7 +96,7 @@ resource "aws_key_pair" "deployer" {
 }
 
 resource "aws_ecr_repository" "hello_cicd" {
-  name                 = "hello-cicd"
+  name                 = var.project_name
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

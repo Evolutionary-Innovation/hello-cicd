@@ -5,7 +5,7 @@ node_modules/
 .terraform/
 *.tfstate
 *.tfstate.*
-terraform.tfvars
+*.secret.tfvars
 
 # Private keys
 keys/private/*

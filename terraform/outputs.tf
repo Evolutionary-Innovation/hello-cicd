@@ -21,3 +21,18 @@ output "app_url" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.hello_cicd.repository_url
 }
+
+output "ecr_repository_name" {
+  description = "ECR repository name"
+  value       = aws_ecr_repository.hello_cicd.name
+}
+
+output "container_name" {
+  description = "Name of the running application container"
+  value       = var.project_name
+}
+
+output "app_port" {
+  description = "Port the application container listens on"
+  value       = var.app_port
+}
