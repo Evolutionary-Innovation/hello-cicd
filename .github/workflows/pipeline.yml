@@ -1,0 +1,30 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: hello-cicd-pipeline
+  cancel-in-progress: false
+
+jobs:
+  infrastructure:
+    uses: ./.github/workflows/infrastructure.yml
+    secrets: inherit
+
+  build:
+    needs: infrastructure
+    uses: ./.github/workflows/build-image.yml
+    secrets: inherit
+
+  deploy:
+    needs: build
+    uses: ./.github/workflows/deploy-app.yml
+    secrets: inherit
