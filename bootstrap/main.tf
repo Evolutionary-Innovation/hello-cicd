@@ -47,7 +47,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 resource "aws_iam_role" "github_terraform" {
-  name = var.github_role_name
+  name = local.github_role_name
 
   tags = {
     "created-for" = "terraform"
@@ -73,7 +73,3 @@ resource "aws_iam_role" "github_terraform" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "github_terraform_admin" {
-  role       = aws_iam_role.github_terraform.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
