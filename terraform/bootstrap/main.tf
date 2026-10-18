@@ -1,7 +1,7 @@
 # --- Terraform state bucket -------------------------------------------------
 
 resource "aws_s3_bucket" "state" {
-  bucket = "ei-terraform-state-2026"
+  bucket = var.state_bucket_name
 
   lifecycle {
     prevent_destroy = true
@@ -47,7 +47,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 resource "aws_iam_role" "github_terraform" {
-  name = "github-terraform-role"
+  name = var.github_role_name
 
   tags = {
     "created-for" = "terraform"
@@ -65,7 +65,7 @@ resource "aws_iam_role" "github_terraform" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:Evolutionary-Innovation@42237286/hello-cicd@1423260544:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}:ref:refs/heads/${var.github_branch}"
           }
         }
       }
