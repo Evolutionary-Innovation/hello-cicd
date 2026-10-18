@@ -26,5 +26,5 @@ jobs:
 
       - name: Build And Push
         run: |
-          docker build -t "$ECR_REPOSITORY_URL:latest" ./app
+          docker build -t "$ECR_REPOSITORY_URL:latest" ./src
           docker push "$ECR_REPOSITORY_URL:latest"
