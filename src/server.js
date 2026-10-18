@@ -8,7 +8,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.status(503).json({ status: "broken", sha: process.env.GIT_SHA || "unknown" });
+  res.json({ status: "ok", sha: process.env.GIT_SHA || "unknown" });
 });
 
 app.listen(3000, () => {
