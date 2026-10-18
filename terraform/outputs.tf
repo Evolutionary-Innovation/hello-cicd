@@ -17,3 +17,7 @@ output "app_url" {
   description = "Application URL"
   value       = "http://${aws_eip.web.public_ip}:3000"
 }
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.hello_cicd.repository_url
+}

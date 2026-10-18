@@ -30,10 +30,6 @@ resource "aws_instance" "web" {
 
     usermod -aG docker ec2-user
 
-    dnf install -y git nodejs
-
-    npm install -g pm2
-
     mkdir -p /home/ec2-user/app
 
     chown -R ec2-user:ec2-user /home/ec2-user/app
@@ -100,3 +96,8 @@ resource "aws_key_pair" "deployer" {
     ignore_changes = [public_key]
   }
 }
+
+resource "aws_ecr_repository" "hello_cicd" {
+  name = "hello-cicd"
+}
+
