@@ -9,7 +9,7 @@ app.get("/", (req, res) => {
 
 // Contract used by the deploy workflow: 200 with {status:"ok", sha:<deployed commit>}.
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", sha: process.env.GIT_SHA || "unknown" });
+  res.status(500).json({ status: "broken", sha: process.env.GIT_SHA || "unknown" });
 });
 
 app.listen(port, () => {
