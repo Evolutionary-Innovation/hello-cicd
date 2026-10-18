@@ -11,4 +11,4 @@ State is stored in the state bucket under `bootstrap/terraform.tfstate`.
 1. Comment out `backend.tf`, then `terraform init && terraform apply` (local state).
 2. Restore `backend.tf`, then `terraform init -migrate-state`.
 3. Set the GitHub variable `AWS_ROLE_ARN` to the `github_actions_role_arn` output.
-4. Run the main stack in `../`.
+4. Run the main stack in `../terraform`.
