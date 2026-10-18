@@ -13,6 +13,8 @@ resource "aws_instance" "web" {
 
   key_name = aws_key_pair.deployer.key_name
 
+  iam_instance_profile = aws_iam_instance_profile.ec2.name
+
   user_data = <<-EOF
     #!/bin/bash
 
@@ -29,10 +31,6 @@ resource "aws_instance" "web" {
     systemctl start docker
 
     usermod -aG docker ec2-user
-
-    mkdir -p /home/ec2-user/app
-
-    chown -R ec2-user:ec2-user /home/ec2-user/app
 
     echo "Bootstrap complete" >/tmp/bootstrap-success.txt
 

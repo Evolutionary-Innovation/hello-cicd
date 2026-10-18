@@ -48,30 +48,20 @@ jobs:
         run: |
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
 
-      - name: Create Application Directory
-        run: |
-          ssh -i ~/.ssh/hello-cicd ec2-user@$SERVER_IP \
-          "mkdir -p /home/ec2-user/app"
-
-      - name: Copy Application
-        run: |
-          scp -i ~/.ssh/hello-cicd \
-          -r app/* \
-          ec2-user@$SERVER_IP:/home/ec2-user/app/
-
-      - name: Build And Deploy Container
+      - name: Deploy Container
         run: |
           ssh -i ~/.ssh/hello-cicd ec2-user@$SERVER_IP "
-            cd /home/ec2-user/app &&
+            aws ecr get-login-password --region eu-west-2 | \
+            docker login --username AWS --password-stdin 394495726863.dkr.ecr.eu-west-2.amazonaws.com &&
+
+            docker pull 394495726863.dkr.ecr.eu-west-2.amazonaws.com/hello-cicd:latest &&
 
             docker stop hello-cicd || true &&
             docker rm hello-cicd || true &&
-
-            docker build -t hello-cicd . &&
 
             docker run -d \
               --name hello-cicd \
               --restart unless-stopped \
               -p 3000:3000 \
-              hello-cicd
+              394495726863.dkr.ecr.eu-west-2.amazonaws.com/hello-cicd:latest
           "
