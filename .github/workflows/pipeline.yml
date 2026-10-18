@@ -27,4 +27,6 @@ jobs:
   deploy:
     needs: build
     uses: ./.github/workflows/deploy-app.yml
+    with:
+      image_tag: ${{ needs.build.outputs.image_tag }}
     secrets: inherit

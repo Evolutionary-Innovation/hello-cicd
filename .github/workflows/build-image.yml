@@ -3,6 +3,10 @@ name: Build Image
 on:
   workflow_dispatch:
   workflow_call:
+    outputs:
+      image_tag:
+        description: Tag (git SHA) of the image in ECR for this commit
+        value: ${{ jobs.build.outputs.image_tag }}
 
 permissions:
   id-token: write
@@ -11,6 +15,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -26,5 +32,12 @@ jobs:
 
       - name: Build And Push
         run: |
-          docker build -t "$ECR_REPOSITORY_URL:latest" ./src
-          docker push "$ECR_REPOSITORY_URL:latest"
+          if aws ecr describe-images \
+              --repository-name "$ECR_REPOSITORY_NAME" \
+              --image-ids imageTag="$GITHUB_SHA" >/dev/null 2>&1; then
+            echo "Image $GITHUB_SHA already in ECR (tags are immutable); skipping push"
+            exit 0
+          fi
+
+          docker build -t "$ECR_REPOSITORY_URL:$GITHUB_SHA" ./src
+          docker push "$ECR_REPOSITORY_URL:$GITHUB_SHA"

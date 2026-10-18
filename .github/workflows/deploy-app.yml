@@ -2,7 +2,17 @@ name: Deploy Application
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag (git SHA) to deploy. Blank = this commit. Use an older SHA to roll back.
+        required: false
+        type: string
   workflow_call:
+    inputs:
+      image_tag:
+        description: Image tag (git SHA) to deploy, normally the one built by the previous stage
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -37,7 +47,8 @@ jobs:
       - name: Deploy Container
         run: |
           REGISTRY="${ECR_REPOSITORY_URL%%/*}"
-          IMAGE="$ECR_REPOSITORY_URL:latest"
+          IMAGE="$ECR_REPOSITORY_URL:${{ inputs.image_tag || github.sha }}"
+          echo "Deploying $IMAGE"
 
           ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" "
             aws ecr get-login-password --region $AWS_REGION | \
