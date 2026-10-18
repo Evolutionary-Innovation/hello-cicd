@@ -5,13 +5,18 @@ resource "aws_instance" "web" {
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
+    encrypted   = true
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
   }
 
   vpc_security_group_ids = [
     aws_security_group.web.id
   ]
-
-  key_name = aws_key_pair.deployer.key_name
 
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
@@ -25,15 +30,12 @@ resource "aws_instance" "web" {
 
     dnf update -y
 
-    dnf install -y docker
+    dnf install -y docker amazon-ssm-agent
 
-    systemctl enable docker
-    systemctl start docker
+    systemctl enable --now docker
+    systemctl enable --now amazon-ssm-agent
 
     usermod -aG docker ec2-user
-
-    echo "Bootstrap complete" >/tmp/bootstrap-success.txt
-
   EOF
 }
 
@@ -44,10 +46,14 @@ data "aws_ami" "amazon_linux" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["al2023-ami-2023.*-kernel-*-x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 }
-
 resource "aws_security_group" "web" {
   name = "${var.project_name}-web"
 
@@ -77,15 +83,6 @@ resource "aws_eip" "web" {
 resource "aws_eip_association" "web" {
   instance_id   = aws_instance.web.id
   allocation_id = aws_eip.web.id
-}
-
-resource "aws_key_pair" "deployer" {
-  key_name   = var.project_name
-  public_key = file("${path.module}/../keys/public/${var.project_name}.pub")
-
-  lifecycle {
-    ignore_changes = [public_key]
-  }
 }
 
 resource "aws_ecr_repository" "app" {
