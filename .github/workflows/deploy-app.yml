@@ -44,7 +44,16 @@ jobs:
         run: |
           ssh-keyscan -H "$PUBLIC_IP" >> ~/.ssh/known_hosts
 
+      - name: Record Previous Image
+        id: prev
+        run: |
+          PREV="$(ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" \
+            "docker inspect --format '{{.Config.Image}}' $CONTAINER_NAME 2>/dev/null || true")"
+          echo "Previous image: ${PREV:-none}"
+          echo "image=$PREV" >> "$GITHUB_OUTPUT"
+
       - name: Deploy Container
+        id: deploy
         run: |
           REGISTRY="${ECR_REPOSITORY_URL%%/*}"
           IMAGE="$ECR_REPOSITORY_URL:${{ inputs.image_tag || github.sha }}"
@@ -67,6 +76,7 @@ jobs:
           "
 
       - name: Health Check
+        id: health
         run: |
           TAG="${{ inputs.image_tag || github.sha }}"
           URL="http://$PUBLIC_IP:$APP_PORT/health"
@@ -83,4 +93,50 @@ jobs:
 
           echo "::error::$URL did not report ok:$TAG within 90s"
           ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" "docker logs --tail 50 $CONTAINER_NAME" || true
+          exit 1
+
+      - name: Roll Back
+        if: always() && steps.prev.outputs.image != '' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure')
+        env:
+          PREV_IMAGE: ${{ steps.prev.outputs.image }}
+        run: |
+          REGISTRY="${ECR_REPOSITORY_URL%%/*}"
+          PREV_TAG="${PREV_IMAGE##*:}"
+          echo "::warning::Deployment failed; rolling back to $PREV_IMAGE"
+
+          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" \
+            bash -s "$PREV_IMAGE" "$CONTAINER_NAME" "$APP_PORT" "$AWS_REGION" "$REGISTRY" <<'REMOTE'
+          set -euo pipefail
+          IMAGE="$1"; NAME="$2"; PORT="$3"; REGION="$4"; REGISTRY="$5"
+
+          if [ "$(docker inspect --format '{{.Config.Image}} {{.State.Running}}' "$NAME" 2>/dev/null || true)" = "$IMAGE true" ]; then
+            echo "$IMAGE is already running; nothing to roll back"
+            exit 0
+          fi
+
+          aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "$IMAGE"
+          docker rm -f "$NAME" || true
+          docker run -d --name "$NAME" --restart unless-stopped -p "$PORT:3000" "$IMAGE"
+          REMOTE
+
+          URL="http://$PUBLIC_IP:$APP_PORT"
+          for attempt in $(seq 1 12); do
+            BODY="$(curl -fsS --max-time 5 "$URL/health" 2>/dev/null || true)"
+            echo "rollback check $attempt: ${BODY:-no /health response}"
+            if [ "$(echo "$BODY" | jq -r '.status + ":" + .sha' 2>/dev/null)" = "ok:$PREV_TAG" ]; then
+              echo "### Rolled back to \`$PREV_TAG\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "Rollback verified: $PREV_TAG is healthy"
+              exit 0
+            fi
+            # images built before /health existed: accept a 200 on /
+            if [ -z "$BODY" ] && curl -fsS --max-time 5 -o /dev/null "$URL/"; then
+              echo "### Rolled back to \`$PREV_TAG\` (no /health in that image)" >> "$GITHUB_STEP_SUMMARY"
+              echo "Rollback verified via / (image predates /health)"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "::error::Rollback to $PREV_IMAGE could not be verified"
           exit 1
