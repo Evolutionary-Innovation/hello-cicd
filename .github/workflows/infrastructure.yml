@@ -7,7 +7,7 @@ on:
 permissions:
   id-token: write
   contents: read
-  
+
 jobs:
   terraform:
     runs-on: ubuntu-24.04
@@ -27,23 +27,20 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: GitHubActions
 
-      - name: Verify Identity
-        run: aws sts get-caller-identity
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
-        run: terraform init -reconfigure
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
 
-      - name: Show State
-        run: terraform state list
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false -backend-config=backend.hcl
 
       - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan -input=false -lock-timeout=60s -out=tfplan
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -input=false -auto-approve tfplan

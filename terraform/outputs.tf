@@ -1,30 +1,26 @@
 output "instance_id" {
-  description = "EC2 Instance ID"
+  description = "EC2 instance ID (target of SSM Run Command)"
   value       = aws_instance.web.id
 }
 
 output "public_ip" {
-  description = "Public IP address"
+  description = "Elastic IP address of the instance"
   value       = aws_eip.web.public_ip
-}
-
-output "public_dns" {
-  description = "Public DNS name"
-  value       = aws_instance.web.public_dns
 }
 
 output "app_url" {
   description = "Application URL"
-  value       = "http://${aws_eip.web.public_ip}:3000"
+  value       = "http://${aws_eip.web.public_ip}:${var.app_port}"
 }
 
 output "ecr_repository_url" {
-  value = aws_ecr_repository.hello_cicd.repository_url
+  description = "ECR repository URL images are pushed to"
+  value       = aws_ecr_repository.app.repository_url
 }
 
 output "ecr_repository_name" {
   description = "ECR repository name"
-  value       = aws_ecr_repository.hello_cicd.name
+  value       = aws_ecr_repository.app.name
 }
 
 output "container_name" {
@@ -33,6 +29,6 @@ output "container_name" {
 }
 
 output "app_port" {
-  description = "Port the application container listens on"
+  description = "Host port the application is published on"
   value       = var.app_port
 }

@@ -88,17 +88,18 @@ resource "aws_key_pair" "deployer" {
   }
 }
 
-resource "aws_ecr_repository" "hello_cicd" {
+resource "aws_ecr_repository" "app" {
   name                 = var.project_name
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = var.ecr_force_delete
 
   image_scanning_configuration {
     scan_on_push = true
   }
 }
 
-resource "aws_ecr_lifecycle_policy" "hello_cicd" {
-  repository = aws_ecr_repository.hello_cicd.name
+resource "aws_ecr_lifecycle_policy" "app" {
+  repository = aws_ecr_repository.app.name
 
   policy = jsonencode({
     rules = [

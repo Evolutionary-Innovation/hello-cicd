@@ -1,16 +1,17 @@
 const express = require("express");
 
 const app = express();
+const port = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-//   res.send("Hello from CI/CD Pipeline!");
-  res.send("Terraform CI/CD Pipeline - Version 5: Docker Image");
+  res.send("Application is running.");
 });
 
+// Contract used by the deploy workflow: 200 with {status:"ok", sha:<deployed commit>}.
 app.get("/health", (req, res) => {
   res.json({ status: "ok", sha: process.env.GIT_SHA || "unknown" });
 });
 
-app.listen(3000, () => {
-  console.log("Listening on port 3000");
+app.listen(port, () => {
+  console.log(`Listening on port ${port}`);
 });

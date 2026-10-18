@@ -15,7 +15,7 @@ runs:
       shell: bash
       working-directory: terraform
       run: |
-        terraform init -reconfigure -input=false
+        terraform init -reconfigure -input=false -backend-config=backend.hcl
         terraform output -json \
           | jq -r 'to_entries[] | "\(.key | ascii_upcase)=\(.value.value)"' \
           >> "$GITHUB_ENV"

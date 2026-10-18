@@ -6,9 +6,10 @@ node_modules/
 *.tfstate
 *.tfstate.*
 *.secret.tfvars
+tfplan
 
-# Private keys
-keys/private/*
+# Keys (none are used by this platform)
+keys/private/
 *.pem
 
 # OS

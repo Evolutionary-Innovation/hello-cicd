@@ -15,8 +15,8 @@ provider "aws" {
   default_tags {
     tags = {
       managed-by  = "terraform"
-      project     = "tf-learning"
-      environment = "dev"
+      project     = var.project_name
+      environment = var.environment
     }
   }
 }
