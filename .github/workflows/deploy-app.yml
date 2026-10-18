@@ -44,6 +44,16 @@ jobs:
         run: |
           ssh-keyscan -H "$PUBLIC_IP" >> ~/.ssh/known_hosts
 
+      # TEMPORARY: minimal AL2023 AMI ships without the SSM agent. Remove once SSM is the deploy path.
+      - name: Ensure SSM Agent
+        run: |
+          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" '
+            set -e
+            rpm -q amazon-ssm-agent >/dev/null 2>&1 || sudo dnf install -y amazon-ssm-agent
+            sudo systemctl enable --now amazon-ssm-agent
+            systemctl is-active amazon-ssm-agent
+          '
+
       - name: Record Previous Image
         id: prev
         run: |
