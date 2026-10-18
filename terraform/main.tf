@@ -52,13 +52,6 @@ resource "aws_security_group" "web" {
   name = "${var.project_name}-web"
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
