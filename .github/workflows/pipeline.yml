@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: hello-cicd-pipeline
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:

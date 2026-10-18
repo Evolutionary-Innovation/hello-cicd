@@ -7,7 +7,7 @@ on:
 permissions:
   id-token: write
   contents: read
-        
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,40 +22,35 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Get Server IP
-        working-directory: terraform
-        run: |
-          terraform init -reconfigure
-          terraform state list
-          echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+      - uses: ./.github/actions/terraform-outputs
 
       - name: Create SSH Key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/hello-cicd
-          chmod 600 ~/.ssh/hello-cicd
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
 
       - name: Add Host Key
         run: |
-          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$PUBLIC_IP" >> ~/.ssh/known_hosts
 
       - name: Deploy Container
         run: |
-          ssh -i ~/.ssh/hello-cicd ec2-user@$SERVER_IP "
-            aws ecr get-login-password --region eu-west-2 | \
-            docker login --username AWS --password-stdin 394495726863.dkr.ecr.eu-west-2.amazonaws.com &&
+          REGISTRY="${ECR_REPOSITORY_URL%%/*}"
+          IMAGE="$ECR_REPOSITORY_URL:latest"
 
-            docker pull 394495726863.dkr.ecr.eu-west-2.amazonaws.com/hello-cicd:latest &&
+          ssh -i ~/.ssh/deploy_key "ec2-user@$PUBLIC_IP" "
+            aws ecr get-login-password --region $AWS_REGION | \
+            docker login --username AWS --password-stdin $REGISTRY &&
 
-            docker stop hello-cicd || true &&
-            docker rm hello-cicd || true &&
+            docker pull $IMAGE &&
+
+            docker stop $CONTAINER_NAME || true &&
+            docker rm $CONTAINER_NAME || true &&
 
             docker run -d \
-              --name hello-cicd \
+              --name $CONTAINER_NAME \
               --restart unless-stopped \
-              -p 3000:3000 \
-              394495726863.dkr.ecr.eu-west-2.amazonaws.com/hello-cicd:latest
+              -p $APP_PORT:3000 \
+              $IMAGE
           "

@@ -20,15 +20,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug Role ARN
-        run: echo "${{ vars.AWS_ROLE_ARN }}"
-
-      - name: Debug Context
-        run: |
-          echo "Repository: ${{ github.repository }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Event: ${{ github.event_name }}"
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -56,7 +47,3 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-
-      - name: Save Outputs
-        run: |
-          echo "INSTANCE_ID=$(terraform output -raw instance_id)" >> $GITHUB_ENV

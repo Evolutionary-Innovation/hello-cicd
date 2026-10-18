@@ -20,12 +20,11 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      - uses: ./.github/actions/terraform-outputs
+
       - uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build And Push
         run: |
-          docker build -t ${{ vars.ECR_REPOSITORY }} ./app
-          docker tag ${{ vars.ECR_REPOSITORY }}:latest \
-            394495726863.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:latest
-          docker push \
-            394495726863.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:latest
+          docker build -t "$ECR_REPOSITORY_URL:latest" ./app
+          docker push "$ECR_REPOSITORY_URL:latest"

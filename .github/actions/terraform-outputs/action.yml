@@ -1,0 +1,21 @@
+name: Terraform outputs
+description: >
+  Initialise the main Terraform stack and export every output to the job
+  environment as an upper-cased variable (ecr_repository_url -> ECR_REPOSITORY_URL).
+  AWS credentials must already be configured by the calling job.
+
+runs:
+  using: composite
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_wrapper: false
+
+    - name: Export Terraform outputs
+      shell: bash
+      working-directory: terraform
+      run: |
+        terraform init -reconfigure -input=false
+        terraform output -json \
+          | jq -r 'to_entries[] | "\(.key | ascii_upcase)=\(.value.value)"' \
+          >> "$GITHUB_ENV"
