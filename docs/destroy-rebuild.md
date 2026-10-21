@@ -39,6 +39,10 @@ aws ssm describe-instance-information --query 'InstanceInformationList[].[Instan
 terraform plan -detailed-exitcode                               # exit 0: no drift
 ```
 
+## Via GitHub Actions
+
+Run the **Destroy** workflow (Actions tab, *Run workflow*) and type `destroy` in the confirmation input. It plans and applies `terraform destroy` for `terraform/` only, using the scoped CI role, and fails if state is not empty afterwards. It shares the Pipeline's concurrency group, so a push to `main` queues behind it instead of running mid-destroy. Then run the **Pipeline** workflow to rebuild.
+
 ## Validated result (v1.0, 2026-10-18)
 
 | Step | Result |

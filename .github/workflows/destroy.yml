@@ -1,0 +1,58 @@
+name: Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to tear down the main stack (terraform/ only)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+# Share the Pipeline's group so a push to main cannot recreate resources mid-destroy.
+concurrency:
+  group: Pipeline
+  cancel-in-progress: false
+
+jobs:
+  destroy:
+    if: inputs.confirm == 'destroy'
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: GitHubActionsDestroy
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false -backend-config=backend.hcl
+
+      - name: Terraform Plan Destroy
+        run: terraform plan -destroy -input=false -lock-timeout=60s -out=destroy.tfplan
+
+      - name: Terraform Apply Destroy
+        run: terraform apply -input=false -auto-approve destroy.tfplan
+
+      - name: Verify state is empty
+        run: |
+          remaining=$(terraform state list)
+          if [ -n "$remaining" ]; then
+            echo "::error::Resources remain in state:"; echo "$remaining"; exit 1
+          fi
+          echo "State is empty. Run the Pipeline workflow to rebuild."
