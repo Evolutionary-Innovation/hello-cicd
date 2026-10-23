@@ -1,12 +1,15 @@
 name: Pipeline
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
+  # PUSH-TRIGGER: manual-only until a project is configured. scripts/configure-project.sh
+  # enables the push trigger below; do not enable it before bootstrap/ is applied and
+  # the AWS_ROLE_ARN / AWS_REGION repository variables are set.
+  # push:
+  #   branches:
+  #     - main
+  #   paths-ignore:
+  #     - "docs/**"
+  #     - "**/*.md"
   workflow_dispatch:
 
 permissions:

@@ -8,8 +8,11 @@
 #
 # Numeric GitHub owner/repo IDs are looked up from the public GitHub API unless
 # --owner-id / --repo-id are given (needed for private repositories).
-# The legacy github_role_name override is removed so the role becomes
+# Any github_role_name override is removed so the role becomes
 # "<name>-github-actions"; pass --keep-role-name to leave it untouched.
+# The bootstrap state key is "bootstrap/<name>/terraform.tfstate" so that projects
+# sharing a state bucket never collide, and sits outside the CI role's state prefix.
+# The Pipeline workflow's push trigger is enabled (it ships manual-only).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -72,9 +75,12 @@ set_var $T project_name "$NAME"
 set_var $T environment "$ENVIRONMENT"
 set_var $T aws_region "$REGION"
 
-printf 'bucket = "%s"\nkey    = "bootstrap/terraform.tfstate"\nregion = "%s"\n' "$BUCKET" "$REGION" > bootstrap/backend.hcl
+printf 'bucket = "%s"\nkey    = "bootstrap/%s/terraform.tfstate"\nregion = "%s"\n' "$BUCKET" "$NAME" "$REGION" > bootstrap/backend.hcl
 printf 'bucket = "%s"\nkey    = "%s/terraform.tfstate"\nregion = "%s"\n' "$BUCKET" "$NAME" "$REGION" > terraform/backend.hcl
 
+# Enable the Pipeline push trigger (shipped commented out so the template never deploys by itself)
+PL=.github/workflows/pipeline.yml
+sed -i -e '/^  # PUSH-TRIGGER:/,/^  # the AWS_ROLE_ARN/d' -e 's/^  # push:/  push:/' -e 's/^  #   /    /' "$PL"
 echo "Configured '$NAME' ($ENVIRONMENT) in $REGION, state bucket $BUCKET, repo $OWNER/$REPO ($BRANCH)."
 echo "Next: set GitHub variable AWS_REGION=$REGION, bootstrap the account, then set AWS_ROLE_ARN."
 echo "See docs/new-project.md"

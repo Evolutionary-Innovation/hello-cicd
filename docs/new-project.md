@@ -10,13 +10,13 @@ How to start StableBuddy, RaceHorse, an engineering tool or a SaaS application f
 | Environment | `dev`, `staging`, `prod`; tag only. Use a separate repository/state per environment, or a separate account |
 | Region | One region per project |
 | Account | A dedicated account per project is simplest. Sharing an account is supported; see the OIDC provider note in [Bootstrap](bootstrap.md) |
-| State bucket | One per account is fine; each project writes under its own prefix and the CI policy only grants that prefix |
+| State bucket | One per account is fine; each project writes under its own prefix (`<project_name>/...`, bootstrap under `bootstrap/<project_name>/...`) and the CI policy only grants the project prefix |
 | Port | `app_port` in `terraform/terraform.tfvars` (default 3000) |
 
 ## 2. Create the project
 
 ```bash
-git clone https://github.com/<owner>/<template> <new-project> && cd <new-project>
+git clone https://github.com/Evolutionary-Labs/hello-cicd <new-project> && cd <new-project>
 rm -rf .git && git init -b main
 
 scripts/configure-project.sh \
@@ -47,6 +47,8 @@ If the application needs more AWS services (S3, a database, a queue), add them i
 ```bash
 git add -A && git commit -m "Initial commit from template" && git push -u origin main
 ```
+
+Before this push, bootstrap (step 3) must be applied and `AWS_ROLE_ARN` / `AWS_REGION` set: the configure script enabled the Pipeline push trigger.
 
 Expect a green Pipeline run, then `curl http://<public_ip>:<port>/health`. The `public_ip` is in the Infrastructure job's Terraform outputs, or run `terraform output` in `terraform/`.
 

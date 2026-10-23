@@ -4,7 +4,7 @@
 
 | Stack | Directory | State key | Applied by | Contains |
 |---|---|---|---|---|
-| bootstrap | `bootstrap/` | `bootstrap/terraform.tfstate` | A human, admin credentials | State bucket, OIDC provider, CI role and policy |
+| bootstrap | `bootstrap/` | `bootstrap/<project_name>/terraform.tfstate` | A human, admin credentials | State bucket, OIDC provider, CI role and policy |
 | main | `terraform/` | `<project_name>/terraform.tfstate` | The Infrastructure workflow | EC2, EIP, security group, ECR, instance IAM role and profile |
 
 Both pin `required_version >= 1.10` and `hashicorp/aws ~> 6.0`, and use S3 native locking (`use_lockfile = true`; no DynamoDB table).

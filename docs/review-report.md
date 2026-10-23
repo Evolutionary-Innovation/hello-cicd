@@ -30,15 +30,9 @@ Scope: every tracked file, reviewed for `hello-cicd` assumptions, hard-coded nam
 - Full destroy of the main stack and rebuild through the pipeline under the scoped role: green, `/health` reports the commit SHA, instance `Online` in SSM, no drift.
 - Automatic rollback proven with a deliberately broken release (then reverted).
 
-## Remaining `hello-cicd` strings
+## Template separation (source level)
 
-All are legitimate configuration values, not assumptions in code:
-
-| File | Value | Why it stays |
-|---|---|---|
-| `terraform/terraform.tfvars`, `bootstrap/terraform.tfvars` | `project_name = "hello-cicd"` | This is the live project's name; renaming it would recreate all resources. New projects overwrite it via the script |
-| `bootstrap/terraform.tfvars` | `github_repo = "hello-cicd"` | The live repository's name |
-| `terraform/backend.hcl` | `key = "hello-cicd/terraform.tfstate"` | Live state location; moving it needs a state migration |
+The committed configuration no longer describes a live project. `project_name` is `my-project`; owner, repo, owner ID, repo ID and state bucket are placeholders; the state keys are `my-project/terraform.tfstate` and `bootstrap/my-project/terraform.tfstate`; the legacy `github_role_name` override is gone; the Pipeline push trigger is commented out until `scripts/configure-project.sh` runs. Nothing in the repository refers to any other repository, AWS account or state file. This was a source-only change: no Terraform was executed and no AWS resource, state or OIDC trust was touched.
 
 ## Remaining hard-coded values that cannot yet be removed
 
@@ -47,7 +41,6 @@ All are legitimate configuration values, not assumptions in code:
 | State bucket name and region | `backend.hcl` (x2), `bootstrap/terraform.tfvars` | Backend blocks cannot use variables | Written together by `configure-project.sh` |
 | `aws_region` | Both tfvars, backend.hcl, GitHub variable `AWS_REGION` | Needed before Terraform can run; GitHub variable cannot be set from Terraform without a PAT | Script prints the value to set; `gh variable set` |
 | `AWS_ROLE_ARN` | GitHub variable | Only known after the bootstrap apply | Output `github_actions_role_arn`; one command |
-| `github_role_name = "github-terraform-role"` | `bootstrap/terraform.tfvars` | Legacy name kept so the existing `AWS_ROLE_ARN` stays valid | Removed automatically for new projects |
 | GitHub owner/repo IDs, branch | `bootstrap/terraform.tfvars` | The OIDC subject is pinned to them | Looked up by the script |
 | Default VPC and subnet | `terraform/main.tf` (implicit) | Template targets a quick start; no VPC module | Roadmap: own VPC |
 | `0.0.0.0/0` on the app port, HTTP only | Security group | No TLS front end yet | Roadmap: TLS and restricted SG |

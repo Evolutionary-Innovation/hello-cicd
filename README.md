@@ -2,11 +2,11 @@
 
 A reusable, template-ready platform that takes a containerised web application from `git push` to a running, health-checked deployment on AWS, with no long-lived credentials, no SSH and no AWS Console steps.
 
-It is the starting point for new projects (for example React apps, internal engineering tools or small SaaS applications): clone it, run one script to rename it, bootstrap the AWS account, replace `src/` with the real application.
+It is a **template**, not a deployment. It ships with placeholder values (`my-project`, `REPLACE-ME-*`) and a manual-only Pipeline, so it deploys nothing and refers to no real account, repository or state bucket. To start a project: copy it, run one script to configure it, bootstrap the AWS account, replace `src/` with the real application.
 
 ## What it does
 
-On every push to `main` GitHub Actions:
+Once a project is configured (the configure script enables the push trigger), every push to `main` runs GitHub Actions:
 
 1. **Infrastructure** - runs `terraform plan` and applies the saved plan: EC2 instance, Elastic IP, security group, ECR repository, instance IAM role.
 2. **Build** - builds `src/Dockerfile` and pushes an immutable image tagged with the git SHA to ECR.
@@ -32,14 +32,14 @@ On every push to `main` GitHub Actions:
 
 Details: [Architecture](docs/architecture.md), [Security](docs/security.md).
 
-## Quick start (this repository, already deployed)
+## Quick start (in a project created from this template)
 
 ```bash
 git push origin main            # triggers Pipeline: infrastructure -> build -> deploy
 curl http://<public_ip>:3000/health
 ```
 
-`public_ip` comes from `terraform output` in `terraform/` (needs read access to the state bucket).
+`public_ip` comes from `terraform output` in `terraform/` (needs read access to the state bucket). In the unconfigured template the Pipeline can only be started manually (`workflow_dispatch`) and will fail until bootstrap is done.
 
 ## Bootstrapping AWS
 
@@ -67,7 +67,7 @@ No secrets are required. See [OIDC Guide](docs/oidc.md).
 
 ## Deploying
 
-Push to `main`. Docs-only pushes (`docs/**`, `**/*.md`) do not trigger the pipeline. Individual stages can be run from the Actions tab (Infrastructure, Build Image, Deploy Application). See [Deployment Guide](docs/deployment.md).
+In a configured project, push to `main`. Docs-only pushes (`docs/**`, `**/*.md`) do not trigger the pipeline. Individual stages can be run from the Actions tab (Infrastructure, Build Image, Deploy Application). See [Deployment Guide](docs/deployment.md).
 
 ## Rollback
 
@@ -115,12 +115,22 @@ Then follow the checklist below and [New Project Guide](docs/new-project.md).
 | [Review report](docs/review-report.md) | v1.0 repository review and remaining hard-coded values |
 | [v1.0 release notes](docs/releases/v1.0.md) | Release notes, summaries, lessons, limitations |
 
+## Isolation rules
+
+Each project made from this template must be fully independent of every other one, including the template and other repositories you own:
+
+- Unique `project_name` (it names the IAM role and policy, instance role, security group, ECR repository and state key).
+- A state bucket you own, ideally per account; never reuse another project's key.
+- Its own GitHub owner/repo IDs in the OIDC trust (the script looks them up).
+- Do not copy another project's `terraform.tfvars` or `backend.hcl`.
+- The GitHub OIDC provider is one per AWS account; see the import note in [Bootstrap](docs/bootstrap.md).
+
 # Template Migration Checklist
 
 Work through these in order for a new project.
 
 1. **Clone repository** - `git clone <this repo> <new-project>`; remove the old history if you want a clean start (`rm -rf .git && git init`).
-2. **Rename project** - run `scripts/configure-project.sh --name <name> --owner <org> --repo <repo> --state-bucket <bucket> --region <region> [--env dev]`. It rewrites both `terraform.tfvars` and both `backend.hcl` and drops the legacy role-name override so the CI role becomes `<name>-github-actions`.
+2. **Rename project** - run `scripts/configure-project.sh --name <name> --owner <org> --repo <repo> --state-bucket <bucket> --region <region> [--env dev]`. It rewrites both `terraform.tfvars` and both `backend.hcl`, gives the bootstrap state its own key (`bootstrap/<name>/terraform.tfstate`), enables the Pipeline push trigger, and drops any role-name override so the CI role becomes `<name>-github-actions`.
 3. **Create GitHub repository** - create the empty repository under the owner given above (same name as `--repo`); add it as `origin`. The script reads the numeric owner/repo IDs from the public API; for a private repository pass `--owner-id` and `--repo-id`.
 4. **Configure bootstrap** - review `bootstrap/terraform.tfvars`: `state_bucket_name` must be globally unique, `github_branch` is the only branch allowed to deploy.
 5. **Configure AWS** - admin credentials in your shell (`aws sts get-caller-identity` shows the right account). If this account already has the GitHub OIDC provider, see the import note in [Bootstrap](docs/bootstrap.md).
