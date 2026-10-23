@@ -1,4 +1,4 @@
-# AWS Terraform CI/CD Platform
+# terraform-aws-cicd-template: AWS Terraform CI/CD Platform
 
 A reusable, template-ready platform that takes a containerised web application from `git push` to a running, health-checked deployment on AWS, with no long-lived credentials, no SSH and no AWS Console steps.
 

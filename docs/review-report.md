@@ -1,6 +1,6 @@
 # v1.0 Repository Review Report
 
-Scope: every tracked file, reviewed for `hello-cicd` assumptions, hard-coded names and URLs, duplicated variables, obsolete outputs, dead code and workflows, stale documentation, temporary workarounds, unnecessary permissions and manual steps.
+Scope: every tracked file, reviewed for project-specific assumptions (the repository was previously named `hello-cicd`), hard-coded names and URLs, duplicated variables, obsolete outputs, dead code and workflows, stale documentation, temporary workarounds, unnecessary permissions and manual steps.
 
 ## Findings and actions
 

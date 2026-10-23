@@ -16,7 +16,7 @@ How to start StableBuddy, RaceHorse, an engineering tool or a SaaS application f
 ## 2. Create the project
 
 ```bash
-git clone https://github.com/Evolutionary-Labs/hello-cicd <new-project> && cd <new-project>
+git clone https://github.com/Evolutionary-Labs/terraform-aws-cicd-template <new-project> && cd <new-project>
 rm -rf .git && git init -b main
 
 scripts/configure-project.sh \
